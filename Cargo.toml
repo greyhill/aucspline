@@ -1,0 +1,4 @@
+[package]
+name = "aucspline"
+version = "0.1.0"
+authors = ["Madison McGaffin <greyhill@gmail.com>"]
