@@ -1,4 +1,7 @@
 [package]
-name = "aucspline"
+name = "boxpoly"
 version = "0.1.0"
 authors = ["Madison McGaffin <greyhill@gmail.com>"]
+
+[dependencies.num]
+num = "0.1.30"
