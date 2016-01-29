@@ -1,2 +1,2 @@
-# aucspline
-B-spline integrals
+# boxpoly
+Polynomials defined on intervals
