@@ -5,7 +5,8 @@ use std::ops::*;
 
 #[derive(Clone, Debug)]
 pub struct Polynomial<F>
-where F: Float {
+    where F: Float
+{
     coeffs: Vec<F>,
     left: F,
     right: F,
@@ -15,14 +16,25 @@ where F: Float {
 
 #[derive(Clone, Debug)]
 pub struct PolynomialSum<F>
-where F: Float {
+    where F: Float
+{
     poly: Vec<Polynomial<F>>,
 }
 
-impl<F> Polynomial<F>
-where F: Float {
+#[derive(Clone, Debug)]
+pub struct PiecewisePolynomial<F>
+    where F: Float
+{
+    knots: Vec<F>,
+    coeffs: Vec<Vec<F>>,
+    after: F,
+    shift: F,
+}
+
+impl<F> Polynomial<F> where F: Float
+{
     pub fn new(left: F, right: F, coeffs: Vec<F>) -> Polynomial<F> {
-        Polynomial{
+        Polynomial {
             left: left,
             right: right,
             coeffs: coeffs,
@@ -65,12 +77,12 @@ where F: Float {
         for (n, &c) in self.coeffs.iter().enumerate() {
             new_coeffs.push(c / F::from(n + 1).unwrap());
         }
-        let mut tr = Polynomial{
+        let mut tr = Polynomial {
             coeffs: new_coeffs,
             left: self.left,
             right: self.right,
             shift: self.shift,
-            after: F::zero()
+            after: F::zero(),
         };
         let f0 = tr.eval_inner(tr.left - tr.shift);
         let f1 = tr.eval_inner(tr.right - tr.shift);
@@ -81,7 +93,7 @@ where F: Float {
     }
 
     pub fn shift(self: &Self, shift: F) -> Polynomial<F> {
-        Polynomial{
+        Polynomial {
             coeffs: self.coeffs.clone(),
             left: self.left,
             right: self.right,
@@ -92,22 +104,29 @@ where F: Float {
 
     pub fn convolve_box(self: &Self, width: F, height: F) -> PolynomialSum<F> {
         let int = self.integrate_indefinite();
-        let r = int.shift(width/F::from(2).unwrap());
-        let l = int.shift(-width/F::from(2).unwrap());
-        (r - l)*height
+        let r = int.shift(width / F::from(2).unwrap());
+        let l = int.shift(-width / F::from(2).unwrap());
+        (r - l) * height
+    }
+
+    pub fn bake(self: &Self) -> PiecewisePolynomial<F> {
+        PiecewisePolynomial {
+            knots: vec![self.left, self.right],
+            coeffs: vec![self.coeffs.clone()],
+            after: self.after,
+            shift: self.shift,
+        }
     }
 }
 
-impl<F> PolynomialSum<F>
-where F: Float {
+impl<F> PolynomialSum<F> where F: Float
+{
     pub fn eval(self: &Self, v: F) -> F {
         self.poly.iter().fold(F::zero(), |l, r| l + r.eval(v))
     }
 
     pub fn integrate_indefinite(self: &Self) -> PolynomialSum<F> {
-        PolynomialSum{
-            poly: self.poly.iter().map(|p| p.integrate_indefinite()).collect(),
-        }
+        PolynomialSum { poly: self.poly.iter().map(|p| p.integrate_indefinite()).collect() }
     }
 
     pub fn convolve_box(self: &Self, width: F, height: F) -> PolynomialSum<F> {
@@ -115,40 +134,38 @@ where F: Float {
         for p in self.poly.iter() {
             poly.extend(p.convolve_box(width, height).poly);
         }
-        PolynomialSum{
-            poly: poly,
-        }
+        PolynomialSum { poly: poly }
+    }
+
+    pub fn bake(self: &Self) -> PiecewisePolynomial<F> {
+        unimplemented!()
     }
 }
 
-impl<'a, 'b, F> Add<&'b Polynomial<F>> for &'a Polynomial<F> 
-where F: Float {
+impl<'a, 'b, F> Add<&'b Polynomial<F>> for &'a Polynomial<F> where F: Float
+{
     type Output = PolynomialSum<F>;
 
     fn add(self, rhs: &'b Polynomial<F>) -> PolynomialSum<F> {
-        PolynomialSum{
-            poly: vec![self.clone(), rhs.clone()],
-        }
+        PolynomialSum { poly: vec![self.clone(), rhs.clone()] }
     }
 }
 
-impl<F> Add<Polynomial<F>> for Polynomial<F> 
-where F: Float {
+impl<F> Add<Polynomial<F>> for Polynomial<F> where F: Float
+{
     type Output = PolynomialSum<F>;
 
     fn add(self, rhs: Polynomial<F>) -> PolynomialSum<F> {
-        PolynomialSum{
-            poly: vec![self.clone(), rhs.clone()],
-        }
+        PolynomialSum { poly: vec![self.clone(), rhs.clone()] }
     }
 }
 
-impl<'a, F> Neg for &'a Polynomial<F>
-where F: Float {
+impl<'a, F> Neg for &'a Polynomial<F> where F: Float
+{
     type Output = Polynomial<F>;
 
     fn neg(self) -> Polynomial<F> {
-        Polynomial{
+        Polynomial {
             left: self.left,
             right: self.right,
             coeffs: self.coeffs.iter().map(|&c| -c).collect(),
@@ -158,12 +175,12 @@ where F: Float {
     }
 }
 
-impl<F> Neg for Polynomial<F>
-where F: Float {
+impl<F> Neg for Polynomial<F> where F: Float
+{
     type Output = Polynomial<F>;
 
     fn neg(self) -> Polynomial<F> {
-        Polynomial{
+        Polynomial {
             left: self.left,
             right: self.right,
             coeffs: self.coeffs.iter().map(|&c| -c).collect(),
@@ -173,8 +190,8 @@ where F: Float {
     }
 }
 
-impl<'a, 'b, F> Sub<&'b Polynomial<F>> for &'a Polynomial<F> 
-where F: Float {
+impl<'a, 'b, F> Sub<&'b Polynomial<F>> for &'a Polynomial<F> where F: Float
+{
     type Output = PolynomialSum<F>;
 
     fn sub(self, rhs: &'b Polynomial<F>) -> PolynomialSum<F> {
@@ -182,8 +199,8 @@ where F: Float {
     }
 }
 
-impl<F> Sub<Polynomial<F>> for Polynomial<F> 
-where F: Float {
+impl<F> Sub<Polynomial<F>> for Polynomial<F> where F: Float
+{
     type Output = PolynomialSum<F>;
 
     fn sub(self, rhs: Polynomial<F>) -> PolynomialSum<F> {
@@ -191,92 +208,82 @@ where F: Float {
     }
 }
 
-impl<'a, 'b, F> Add<&'b PolynomialSum<F>> for &'a PolynomialSum<F>
-where F: Float {
+impl<'a, 'b, F> Add<&'b PolynomialSum<F>> for &'a PolynomialSum<F> where F: Float
+{
     type Output = PolynomialSum<F>;
 
     fn add(self, rhs: &'b PolynomialSum<F>) -> PolynomialSum<F> {
         let mut poly = self.poly.clone();
         poly.extend(rhs.poly.clone());
-        PolynomialSum{
-            poly: poly,
-        }
+        PolynomialSum { poly: poly }
     }
 }
 
-impl<F> Add<PolynomialSum<F>> for PolynomialSum<F>
-where F: Float {
+impl<F> Add<PolynomialSum<F>> for PolynomialSum<F> where F: Float
+{
     type Output = PolynomialSum<F>;
 
     fn add(self, rhs: PolynomialSum<F>) -> PolynomialSum<F> {
         let mut poly = self.poly.clone();
         poly.extend(rhs.poly.clone());
-        PolynomialSum{
-            poly: poly,
-        }
+        PolynomialSum { poly: poly }
     }
 }
 
-impl<'a, F> Mul<F> for &'a Polynomial<F>
-where F: Float {
+impl<'a, F> Mul<F> for &'a Polynomial<F> where F: Float
+{
     type Output = Polynomial<F>;
 
     fn mul(self, rhs: F) -> Polynomial<F> {
-        Polynomial{
-            coeffs: self.coeffs.iter().map(|&c| c*rhs).collect(),
+        Polynomial {
+            coeffs: self.coeffs.iter().map(|&c| c * rhs).collect(),
             left: self.left,
             right: self.right,
             shift: self.shift,
-            after: rhs*self.after,
+            after: rhs * self.after,
         }
     }
 }
 
-impl<F> Mul<F> for Polynomial<F>
-where F: Float {
+impl<F> Mul<F> for Polynomial<F> where F: Float
+{
     type Output = Polynomial<F>;
 
     fn mul(self, rhs: F) -> Polynomial<F> {
-        Polynomial{
-            coeffs: self.coeffs.iter().map(|&c| c*rhs).collect(),
+        Polynomial {
+            coeffs: self.coeffs.iter().map(|&c| c * rhs).collect(),
             left: self.left,
             right: self.right,
             shift: self.shift,
-            after: rhs*self.after,
+            after: rhs * self.after,
         }
     }
 }
 
-impl<'a, F> Mul<F> for &'a PolynomialSum<F> 
-where F: Float {
+impl<'a, F> Mul<F> for &'a PolynomialSum<F> where F: Float
+{
     type Output = PolynomialSum<F>;
 
     fn mul(self, rhs: F) -> PolynomialSum<F> {
-        PolynomialSum{
-            poly: self.poly.iter().map(|p| p*rhs).collect()
-        }
+        PolynomialSum { poly: self.poly.iter().map(|p| p * rhs).collect() }
     }
 }
 
-impl<F> Mul<F> for PolynomialSum<F> 
-where F: Float {
+impl<F> Mul<F> for PolynomialSum<F> where F: Float
+{
     type Output = PolynomialSum<F>;
 
     fn mul(self, rhs: F) -> PolynomialSum<F> {
-        PolynomialSum{
-            poly: self.poly.iter().map(|p| p*rhs).collect()
-        }
+        PolynomialSum { poly: self.poly.iter().map(|p| p * rhs).collect() }
     }
 }
 
-impl<'a, F> Neg for &'a PolynomialSum<F> 
-where F: Float {
+impl<'a, F> Neg for &'a PolynomialSum<F> where F: Float
+{
     type Output = PolynomialSum<F>;
 
     fn neg(self) -> PolynomialSum<F> {
-        PolynomialSum{
-            poly: self.poly.iter().map(|p| -p).collect()
-        }
+        PolynomialSum { poly: self.poly.iter().map(|p| -p).collect() }
     }
 }
 
@@ -306,4 +313,3 @@ fn test_trap() {
     assert_eq!(f_trap.eval(offset + 1.5f32), 0f32);
     assert_eq!(f_trap.eval(offset + 2f32), 0f32);
 }
-
